@@ -1,60 +1,74 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>모의 운용 수익률</title>
+<title>Paper accounts</title>
 <style>
-:root{--bg:#fbfbfa;--panel:#fff;--fg:#16181d;--mut:#6b7280;--grid:#e6e7ea;--up:#c62828;--down:#1558b0}
-@media (prefers-color-scheme: dark){:root{--bg:#101114;--panel:#17191e;--fg:#eceef2;--mut:#9aa1ad;--grid:#2a2d34;--up:#ff6b6b;--down:#6aa9ff}}
+:root{--bg:#fbfbfa;--panel:#fff;--fg:#16181d;--mut:#6b7280;--grid:#e6e7ea;--up:#1f8a4c;--down:#c62828}
+@media (prefers-color-scheme: dark){:root{--bg:#101114;--panel:#17191e;--fg:#eceef2;--mut:#9aa1ad;--grid:#2a2d34;--up:#4cc77f;--down:#ff6b6b}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI","Malgun Gothic",sans-serif}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:980px;margin:0 auto;padding:20px 16px 40px}
 h1{font-size:22px;margin:0 0 2px}
+h2{font-size:15px;margin:0 0 10px}
 .sub{color:var(--mut);font-size:13px;margin:0 0 16px}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--mut);margin-right:6px;vertical-align:middle}
 .dot.on{background:#2e9e5b}
 .panel{background:var(--panel);border:1px solid var(--grid);border-radius:12px;padding:14px;margin-bottom:16px}
 .wrap{overflow-x:auto}
+.tall{max-height:420px;overflow-y:auto}
 table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
 th,td{padding:8px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--grid)}
-th{color:var(--mut);font-weight:500;font-size:12px}
+th{color:var(--mut);font-weight:500;font-size:12px;position:sticky;top:0;background:var(--panel)}
 td:first-child,th:first-child{text-align:left}
 tr:last-child td{border-bottom:0}
 .key{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:8px;vertical-align:middle}
 .up{color:var(--up)} .down{color:var(--down)}
-.tabs{display:flex;gap:6px;margin-bottom:8px}
+.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .tabs button{font:inherit;font-size:13px;padding:5px 12px;border-radius:8px;border:1px solid var(--grid);background:transparent;color:var(--mut);cursor:pointer}
 .tabs button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 svg{width:100%;height:auto;display:block}
 svg text{font-size:11px;fill:var(--mut)}
-.note{color:var(--mut);font-size:12px;line-height:1.6;margin:0}
+.note{color:var(--mut);font-size:12px;line-height:1.6;margin:0 0 8px}
+.empty{color:var(--mut);font-size:13px;margin:6px 0}
 </style>
 </head>
 <body>
 <main>
-<h1>모의 운용 수익률</h1>
-<p class="sub" id="sub">불러오는 중…</p>
+<h1>Paper accounts</h1>
+<p class="sub" id="sub">Loading…</p>
 <div class="panel"><div class="wrap"><table id="table"></table></div></div>
 <div class="panel">
-<div class="tabs"><button id="t-all" class="on">시작 이후</button><button id="t-day">오늘</button></div>
+<div class="tabs" id="views"><button data-v="all" class="on">Since start</button><button data-v="day">Today</button></div>
 <svg id="chart" viewBox="0 0 940 380"></svg>
 </div>
-<p class="note">계좌마다 가상의 $100,000을 21등분해 하루에 한 등분씩 시작합니다. 장 마감 뒤 종목을 정하고 다음 거래일 시가에 1주 단위로 삽니다(슬리피지 0.05%, 수수료 $0). SPY 계좌는 같은 날짜에 같은 금액으로 SPY를 사서 들고 있습니다. 실제 돈이 아닌 모의 계좌이며 투자 권유가 아닙니다. 장중에는 5분마다 갱신됩니다.</p>
+<div class="panel">
+<h2>Holdings</h2>
+<div class="tabs" id="models"></div>
+<div class="wrap tall"><table id="holdings"></table></div>
+</div>
+<div class="panel">
+<h2>Trades</h2>
+<div class="wrap tall"><table id="trades"></table></div>
+</div>
+<p class="note">Each account starts with a notional $100,000 split into 21 parts, one part starting each trading day. Stocks are chosen after the close and bought at the next open in whole shares (0.05% slippage, no commission). The SPY account buys SPY with the same amounts on the same days. Updated every 5 minutes while the US market is open.</p>
+<p class="note">Stocks are shown under random numbers; symbols, prices and share counts are withheld, gains are rounded to the nearest percent and trade amounts to the nearest $100. These are simulated accounts with no real money, and nothing here is investment advice.</p>
 </main>
 <script>
-const COLORS = ['#e4572e', '#f3a712', '#2e9e5b', '#17a2b8', '#3b6fd8', '#8e5bd9', '#7a7f8a'];
 const SOURCE = location.hostname.endsWith('github.io') ? 'https://raw.githubusercontent.com/tajankam12345-svg/longview-live/data/data.json' : 'data.json';
-let DATA = null, VIEW = 'all';
+const COLORS = ['#e4572e', '#f3a712', '#2e9e5b', '#17a2b8', '#3b6fd8', '#8e5bd9', '#7a7f8a'];
+let DATA = null, VIEW = 'all', MODEL = 0;
 const pct = (v, d = 2) => v == null ? '–' : (v > 0 ? '+' : '') + (100 * v).toFixed(d) + '%';
 const cls = v => v == null ? '' : v > 0 ? 'up' : v < 0 ? 'down' : '';
-const kst = t => new Date(t).toLocaleString('ko-KR', {timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'});
+const when = t => new Date(t).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'});
+const clock = t => new Date(t).toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'});
 function table() {
   const rows = DATA.accounts.map((a, i) => '<tr><td><span class="key" style="background:' + COLORS[i % 7] + '"></span>' + a.name + '</td><td>$' +
     Math.round(a.value).toLocaleString('en-US') + '</td><td class="' + cls(a.total) + '">' + pct(a.total) + '</td><td class="' + cls(a.today) + '">' + pct(a.today) +
-    '</td><td class="' + cls(a.over) + '">' + (a.name === 'SPY' ? '–' : pct(a.over).replace('%', '%p')) + '</td><td>' + (a.stocks == null ? '–' : Math.round(100 * a.stocks) + '%') + '</td></tr>').join('');
-  document.getElementById('table').innerHTML = '<tr><th>모델</th><th>가치</th><th>누적</th><th>오늘</th><th>SPY 대비</th><th>주식 비중</th></tr>' + rows;
-  document.getElementById('sub').innerHTML = '<span class="dot' + (DATA.open ? ' on' : '') + '"></span>' + (DATA.open ? '장중' : '장 마감') + ' · 기준 ' + kst(DATA.updated) + ' (한국 시간) · ' + DATA.start + ' 시작';
+    '</td><td class="' + cls(a.over) + '">' + (a.name === 'SPY' ? '–' : pct(a.over).replace('%', ' pt')) + '</td><td>' + (a.stocks == null ? '–' : Math.round(100 * a.stocks) + '%') + '</td></tr>').join('');
+  document.getElementById('table').innerHTML = '<tr><th>Model</th><th>Value</th><th>Total</th><th>Today</th><th>vs SPY</th><th>In stocks</th></tr>' + rows;
+  document.getElementById('sub').innerHTML = '<span class="dot' + (DATA.open ? ' on' : '') + '"></span>' + (DATA.open ? 'Market open' : 'Market closed') + ' · as of ' + when(DATA.updated) + ' · started ' + DATA.start;
 }
 function chart() {
   const W = 940, H = 380, L = 52, R = 14, T = 12, B = 28, svg = document.getElementById('chart');
@@ -74,21 +88,35 @@ function chart() {
     out += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(m) + '" y2="' + Y(m) + '" stroke="var(--' + (zero ? 'mut' : 'grid') + ')" stroke-width="1"/>' +
       '<text x="' + (L - 6) + '" y="' + (Y(m) + 4) + '" text-anchor="end">' + pct(m, step < 0.01 ? 1 : 0) + '</text>';
   }
-  const first = series[0], lab = p => p[0] == null ? (VIEW === 'day' ? '전일 종가' : '시작') : p[0].length > 10 ? kst(p[0]).split(' ').slice(-2).join(' ') : p[0].slice(5);
+  const first = series[0], lab = p => p[0] == null ? (VIEW === 'day' ? 'Previous close' : 'Start') : p[0].length > 10 ? clock(p[0]) : p[0].slice(5);
   if (n > 1) out += '<text x="' + L + '" y="' + (H - 8) + '">' + lab(first[0]) + '</text><text x="' + (W - R) + '" y="' + (H - 8) + '" text-anchor="end">' + lab(first[first.length - 1]) + '</text>';
   series.forEach((s, i) => {
     const w = DATA.accounts[i].name === 'SPY' ? 2.6 : 1.8;
     out += '<polyline fill="none" stroke="' + COLORS[i % 7] + '" stroke-width="' + w + '" stroke-linejoin="round" points="' + s.map((p, k) => X(k).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ') + '"/>';
-    if (s.length === 1) out += '<circle cx="' + X(0) + '" cy="' + Y(0) + '" r="3" fill="' + COLORS[i % 7] + '"/>';
   });
-  if (n < 2) out += '<text x="' + (W / 2) + '" y="' + (H / 2) + '" text-anchor="middle">' + (VIEW === 'day' ? '오늘 장이 열리면 표시됩니다' : '첫 거래일이 지나면 표시됩니다') + '</text>';
+  if (n < 2) out += '<text x="' + (W / 2) + '" y="' + (H / 2) + '" text-anchor="middle">' + (VIEW === 'day' ? 'Shown once the market opens' : 'Shown after the first trading day') + '</text>';
   svg.innerHTML = out;
 }
-async function load() {
-  try { DATA = await (await fetch(SOURCE + '?t=' + Date.now(), {cache: 'no-store'})).json(); table(); chart(); }
-  catch (e) { if (!DATA) document.getElementById('sub').textContent = '자료를 불러오지 못했습니다.'; }
+function holdings() {
+  const box = document.getElementById('models');
+  box.innerHTML = DATA.accounts.map((a, i) => '<button data-i="' + i + '"' + (i === MODEL ? ' class="on"' : '') + '>' + a.name + '</button>').join('');
+  box.querySelectorAll('button').forEach(b => b.onclick = () => { MODEL = +b.dataset.i; holdings(); });
+  const h = DATA.accounts[MODEL].holdings || [];
+  document.getElementById('holdings').innerHTML = h.length ? '<tr><th>Stock</th><th>Share of account</th><th>Days held</th><th>Gain</th></tr>' +
+    h.map(x => '<tr><td>' + x.stock + '</td><td>' + (100 * x.weight).toFixed(1) + '%</td><td>' + x.days + '</td><td class="' + cls(x.gain) + '">' + pct(x.gain, 0) + '</td></tr>').join('')
+    : '<tr><td class="empty">Nothing held yet.</td></tr>';
 }
-for (const v of ['all', 'day']) document.getElementById('t-' + v).onclick = () => { VIEW = v; document.getElementById('t-all').className = v === 'all' ? 'on' : ''; document.getElementById('t-day').className = v === 'day' ? 'on' : ''; if (DATA) chart(); };
+function trades() {
+  const t = DATA.trades || [];
+  document.getElementById('trades').innerHTML = t.length ? '<tr><th>Day</th><th>Model</th><th>Side</th><th>Stock</th><th>Amount</th></tr>' +
+    t.map(x => '<tr><td>' + x.day + '</td><td>' + x.model + '</td><td class="' + (x.side === 'Buy' ? 'up' : 'down') + '">' + x.side + '</td><td>' + x.stock + '</td><td>~$' + x.amount.toLocaleString('en-US') + '</td></tr>').join('')
+    : '<tr><td class="empty">No trades yet.</td></tr>';
+}
+async function load() {
+  try { DATA = await (await fetch(SOURCE + '?t=' + Date.now(), {cache: 'no-store'})).json(); table(); chart(); holdings(); trades(); }
+  catch (e) { if (!DATA) document.getElementById('sub').textContent = 'Could not load the data.'; }
+}
+document.querySelectorAll('#views button').forEach(b => b.onclick = () => { VIEW = b.dataset.v; document.querySelectorAll('#views button').forEach(x => x.className = x === b ? 'on' : ''); if (DATA) chart(); });
 load(); setInterval(load, 60000);
 </script>
 </body>
