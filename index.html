@@ -132,7 +132,7 @@ function chart() {
     out += '<polyline fill="none" stroke="' + s.color + '" stroke-width="' + (s.name === 'SPY' ? 2.6 : 1.8) + '" stroke-linejoin="round" points="' + s.r.map((p, k) => X(k).toFixed(1) + ',' + Y(p[1]).toFixed(1)).join(' ') + '"/>';
   });
   if (DATA.live && n > 1 && SERIES.length) {             // where the record made as it happened begins
-    const k = SERIES[0].r.findIndex(q => q[0].slice(0, 10) >= DATA.live);
+    const k = SERIES[0].r.findIndex((q, i) => i > 0 && q[0].slice(0, 10) >= DATA.live);
     if (k > 0) out += '<line x1="' + X(k - 1) + '" x2="' + X(k - 1) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="var(--mut)" stroke-dasharray="2 4"/>' +
       '<text x="' + (X(k - 1) - 6) + '" y="' + (T + 10) + '" text-anchor="end">BACKFILL</text><text x="' + (X(k - 1) + 6) + '" y="' + (T + 10) + '">LIVE</text>';
   }
